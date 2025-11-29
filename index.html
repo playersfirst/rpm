@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session RPM Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+        }
+
+        .header h1 {
+            color: #111827;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .date-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #f3f4f6;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+
+        .date-selector label {
+            color: #666;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .date-selector select {
+            padding: 8px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .date-selector select:focus {
+            outline: none;
+            border-color: #111827;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: #111827;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1f2937;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-content h3 {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .stat-content .value {
+            color: #333;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .stat-content .trend {
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .trend.up {
+            color: #10b981;
+        }
+
+        .trend.down {
+            color: #ef4444;
+        }
+
+        .stat-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .icon-blue {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .icon-green {
+            background: #d1fae5;
+            color: #10b981;
+        }
+
+        .icon-purple {
+            background: #ede9fe;
+            color: #8b5cf6;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            margin-bottom: 30px;
+        }
+
+        .chart-container h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .table-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 15px;
+            color: #666;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        th.right {
+            text-align: right;
+        }
+
+        td {
+            padding: 15px;
+            color: #333;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        td.right {
+            text-align: right;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .rpm-value {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #111827;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .stat-content .value {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Session RPM Dashboard</h1>
+            <p id="lastUpdated">Track your earnings per 1,000 sessions</p>
+            <div class="controls">
+                <div class="date-selector">
+                    <label for="dateRange">View:</label>
+                    <select id="dateRange">
+                        <option value="7">Last 7 days</option>
+                        <option value="14">Last 14 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="60">Last 60 days</option>
+                        <option value="90">Last 90 days</option>
+                        <option value="all">All time</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="refreshBtn">
+                    <span>↻</span> Refresh Data
+                </button>
+                <a href="https://docs.google.com/spreadsheets/d/1iCvfQUZR26S7IGFGR_avI_7nhvVdPh_O-vyBXuXo6Gc/edit?gid=1506764236#gid=1506764236" 
+                   class="btn btn-success" target="_blank">
+                    <span>↗</span> Open Sheet
+                </a>
+            </div>
+        </div>
+
+        <div id="errorContainer"></div>
+        <div id="loadingContainer" class="loading" style="display:none;">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div id="chartContainer" class="chart-container" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Metrics Overview</h2>
+                <div style="display: flex; gap: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="toggleRPM" checked style="cursor: pointer;">
+                        <span style="color: #3b82f6; font-weight: 600;">Session RPM</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="toggleSessions" style="cursor: pointer;">
+                        <span style="color: #8b5cf6; font-weight: 600;">Sessions</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="toggleEarnings" style="cursor: pointer;">
+                        <span style="color: #10b981; font-weight: 600;">Earnings</span>
+                    </label>
+                </div>
+            </div>
+            <canvas id="mainChart"></canvas>
+        </div>
+
+        <div id="statsContainer" class="stats-grid"></div>
+
+        <div id="tableContainer" class="table-container" style="display:none;">
+            <h2>Daily Breakdown</h2>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th class="right">Sessions</th>
+                        <th class="right">Earnings</th>
+                        <th class="right">Session RPM</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqHzVykatZAy12jD47BPeFK6B2NipfduZ5W55rSF4Lpziw0sRA8he4Gpgg4ZLAGN8u4d2DJEri-o-h/pub?gid=1506764236&single=true&output=csv';
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1iCvfQUZR26S7IGFGR_avI_7nhvVdPh_O-vyBXuXo6Gc/edit?gid=1506764236#gid=1506764236';
+        let allData = [];
+        let selectedDays = 30;
+
+        async function fetchSheetData() {
+            // Use CORS proxy to avoid CORS issues when opening HTML locally
+            const corsProxy = 'https://api.allorigins.win/raw?url=';
+            // Add cache busting timestamp to force fresh data
+            const timestamp = new Date().getTime();
+            const urlWithTimestamp = PUBLISHED_CSV_URL + '&_=' + timestamp;
+            const url = corsProxy + encodeURIComponent(urlWithTimestamp);
+            
+            try {
+                const response = await fetch(url, {
+                    cache: 'no-store' // Don't use browser cache
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch sheet data.');
+                }
+                
+                const csvText = await response.text();
+                return parseCSV(csvText);
+            } catch (error) {
+                throw new Error('Failed to load data from Google Sheet. Please check your internet connection or try using a local server.');
+            }
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                // Handle CSV with quoted fields that may contain commas
+                const regex = /("(?:[^"]|"")*"|[^,]*)(,|$)/g;
+                const fields = [];
+                let match;
+                
+                while (match = regex.exec(lines[i])) {
+                    let field = match[1];
+                    // Remove quotes and unescape double quotes
+                    field = field.replace(/^"|"$/g, '').replace(/""/g, '"');
+                    fields.push(field);
+                    if (match[2] === '') break;
+                }
+                
+                if (fields.length >= 4) {
+                    const date = fields[0];
+                    const sessions = parseInt(fields[1].replace(/,/g, '')) || 0;
+                    const earnings = parseFloat(fields[2].replace(/[\$,]/g, '')) || 0;
+                    const sessionRPM = parseFloat(fields[3].replace(/[\$,]/g, '')) || 0;
+
+                    if (date && !isNaN(sessions) && !isNaN(earnings) && !isNaN(sessionRPM)) {
+                        data.push({
+                            date: formatDisplayDate(date),
+                            rawDate: date,
+                            sessions: sessions,
+                            earnings: earnings,
+                            sessionRPM: sessionRPM
+                        });
+                    }
+                }
+            }
+
+            return data;
+        }
+
+        function formatDisplayDate(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function getFilteredData() {
+            if (selectedDays === 'all') {
+                return allData;
+            }
+            const days = parseInt(selectedDays);
+            return allData.slice(-days);
+        }
+
+        function calculateStats(data) {
+            if (data.length === 0) {
+                return { avgRPM: 0, totalEarnings: 0, totalSessions: 0, trend: 0 };
+            }
+
+            // Avg RPM: always from ALL data (entire period)
+            const allTotalEarnings = allData.reduce((sum, day) => sum + day.earnings, 0);
+            const allTotalSessions = allData.reduce((sum, day) => sum + day.sessions, 0);
+            const avgRPM = (allTotalEarnings / allTotalSessions) * 1000;
+
+            // Total earnings and sessions: from filtered data
+            const totalEarnings = data.reduce((sum, day) => sum + day.earnings, 0);
+            const totalSessions = data.reduce((sum, day) => sum + day.sessions, 0);
+
+            // Trend: always compare last 7 days vs previous 7 days from ALL data
+            let trend = 0;
+            if (allData.length >= 14) {
+                const last7 = allData.slice(-7);
+                const prev7 = allData.slice(-14, -7);
+                
+                const last7RPM = last7.reduce((sum, d) => sum + d.sessionRPM, 0) / 7;
+                const prev7RPM = prev7.reduce((sum, d) => sum + d.sessionRPM, 0) / 7;
+                
+                trend = ((last7RPM - prev7RPM) / prev7RPM) * 100;
+            }
+
+            return {
+                avgRPM: avgRPM.toFixed(2),
+                totalEarnings: totalEarnings.toFixed(2),
+                totalSessions: totalSessions.toLocaleString(),
+                trend: trend.toFixed(1),
+                dataLength: data.length
+            };
+        }
+
+        function renderStats(stats) {
+            const container = document.getElementById('statsContainer');
+            
+            const trendHTML = stats.trend != 0 ? 
+                `<div class="trend ${stats.trend > 0 ? 'up' : 'down'}">
+                    ${stats.trend > 0 ? '↑' : '↓'} ${Math.abs(stats.trend)}% vs previous week
+                </div>` : '';
+
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <h3>Avg Session RPM</h3>
+                        <div class="value">${stats.avgRPM}</div>
+                        ${trendHTML}
+                    </div>
+                    <div class="stat-icon icon-blue">📈</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <h3>Total Earnings</h3>
+                        <div class="value">${stats.totalEarnings}</div>
+                        <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                            Last ${stats.dataLength} days
+                        </div>
+                    </div>
+                    <div class="stat-icon icon-green">💵</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <h3>Total Sessions</h3>
+                        <div class="value">${stats.totalSessions}</div>
+                        <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                            Last ${stats.dataLength} days
+                        </div>
+                    </div>
+                    <div class="stat-icon icon-purple">👥</div>
+                </div>
+            `;
+        }
+
+        function renderChart(data) {
+            const canvas = document.getElementById('mainChart');
+            const ctx = canvas.getContext('2d');
+
+            if (window.chartInstance) {
+                window.chartInstance.destroy();
+            }
+
+            const showRPM = document.getElementById('toggleRPM').checked;
+            const showSessions = document.getElementById('toggleSessions').checked;
+            const showEarnings = document.getElementById('toggleEarnings').checked;
+
+            const datasets = [];
+
+            if (showRPM) {
+                datasets.push({
+                    label: 'Session RPM ($)',
+                    data: data.map(d => d.sessionRPM),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y'
+                });
+            }
+
+            if (showSessions) {
+                datasets.push({
+                    label: 'Sessions',
+                    data: data.map(d => d.sessions),
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                });
+            }
+
+            if (showEarnings) {
+                datasets.push({
+                    label: 'Earnings ($)',
+                    data: data.map(d => d.earnings),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    yAxisID: 'y2'
+                });
+            }
+
+            const scales = {
+                y: {
+                    type: 'linear',
+                    display: showRPM,
+                    position: 'left',
+                    title: {
+                        display: showRPM,
+                        text: 'Session RPM ($)'
+                    },
+                    beginAtZero: false
+                },
+                y1: {
+                    type: 'linear',
+                    display: showSessions,
+                    position: showRPM ? 'right' : 'left',
+                    title: {
+                        display: showSessions,
+                        text: 'Sessions'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    }
+                },
+                y2: {
+                    type: 'linear',
+                    display: showEarnings,
+                    position: 'right',
+                    title: {
+                        display: showEarnings,
+                        text: 'Earnings ($)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    }
+                }
+            };
+
+            window.chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: scales,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('chartContainer').style.display = 'block';
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            const reversedData = [...data].reverse();
+
+            tbody.innerHTML = reversedData.map(row => `
+                <tr>
+                    <td>${row.date}</td>
+                    <td class="right">${row.sessions.toLocaleString()}</td>
+                    <td class="right">$${row.earnings.toFixed(2)}</td>
+                    <td class="right rpm-value">$${row.sessionRPM.toFixed(2)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('tableContainer').style.display = 'block';
+        }
+
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        function hideError() {
+            document.getElementById('errorContainer').innerHTML = '';
+        }
+
+        function showLoading() {
+            document.getElementById('loadingContainer').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingContainer').style.display = 'none';
+        }
+
+        function updateDashboard() {
+            const filteredData = getFilteredData();
+            const stats = calculateStats(filteredData);
+            
+            renderChart(filteredData);
+            renderStats(stats);
+            renderTable(filteredData);
+        }
+
+        async function loadData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            showLoading();
+            hideError();
+
+            try {
+                const data = await fetchSheetData();
+                
+                if (data.length === 0) {
+                    throw new Error('No data found in sheet. Make sure the Apps Script has run at least once.');
+                }
+
+                allData = data;
+                updateDashboard();
+
+                const now = new Date().toLocaleString();
+                document.getElementById('lastUpdated').textContent = 
+                    `Track your earnings per 1,000 sessions • Last refreshed: ${now}`;
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+                btn.disabled = false;
+            }
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', loadData);
+        
+        document.getElementById('dateRange').addEventListener('change', (e) => {
+            selectedDays = e.target.value;
+            updateDashboard();
+        });
+
+        // Add event listeners for toggle checkboxes
+        document.getElementById('toggleRPM').addEventListener('change', () => {
+            const filteredData = getFilteredData();
+            renderChart(filteredData);
+        });
+
+        document.getElementById('toggleSessions').addEventListener('change', () => {
+            const filteredData = getFilteredData();
+            renderChart(filteredData);
+        });
+
+        document.getElementById('toggleEarnings').addEventListener('change', () => {
+            const filteredData = getFilteredData();
+            renderChart(filteredData);
+        });
+
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>
