@@ -455,25 +455,43 @@
                 return { avgRPM: 0, totalEarnings: 0, totalSessions: 0, trend: 0 };
             }
 
-            // Avg RPM: always from ALL data (entire period)
-            const allTotalEarnings = allData.reduce((sum, day) => sum + day.earnings, 0);
-            const allTotalSessions = allData.reduce((sum, day) => sum + day.sessions, 0);
-            const avgRPM = (allTotalEarnings / allTotalSessions) * 1000;
-
             // Total earnings and sessions: from filtered data
             const totalEarnings = data.reduce((sum, day) => sum + day.earnings, 0);
             const totalSessions = data.reduce((sum, day) => sum + day.sessions, 0);
+            
+            // Avg RPM: from filtered data (follows date filters)
+            const avgRPM = totalSessions > 0 ? (totalEarnings / totalSessions) * 1000 : 0;
 
-            // Trend: always compare last 7 days vs previous 7 days from ALL data
+            // Trend: compare filtered period vs immediately preceding period of same length
             let trend = 0;
-            if (allData.length >= 14) {
-                const last7 = allData.slice(-7);
-                const prev7 = allData.slice(-14, -7);
+            const periodLength = data.length;
+            const isAllTime = data.length === allData.length;
+            
+            if (isAllTime && allData.length >= 2) {
+                // For "all time": compare most recent half vs previous half
+                const halfLength = Math.floor(allData.length / 2);
+                const recentHalf = allData.slice(-halfLength);
+                const previousHalf = allData.slice(-halfLength * 2, -halfLength);
                 
-                const last7RPM = last7.reduce((sum, d) => sum + d.sessionRPM, 0) / 7;
-                const prev7RPM = prev7.reduce((sum, d) => sum + d.sessionRPM, 0) / 7;
+                const recentTotalEarnings = recentHalf.reduce((sum, day) => sum + day.earnings, 0);
+                const recentTotalSessions = recentHalf.reduce((sum, day) => sum + day.sessions, 0);
+                const recentRPM = recentTotalSessions > 0 ? (recentTotalEarnings / recentTotalSessions) * 1000 : 0;
                 
-                trend = ((last7RPM - prev7RPM) / prev7RPM) * 100;
+                const prevTotalEarnings = previousHalf.reduce((sum, day) => sum + day.earnings, 0);
+                const prevTotalSessions = previousHalf.reduce((sum, day) => sum + day.sessions, 0);
+                const prevRPM = prevTotalSessions > 0 ? (prevTotalEarnings / prevTotalSessions) * 1000 : 0;
+                
+                trend = prevRPM > 0 ? ((recentRPM - prevRPM) / prevRPM) * 100 : 0;
+            } else if (!isAllTime && allData.length >= periodLength * 2) {
+                // For specific date ranges: compare filtered period vs immediately preceding period of same length
+                const currentPeriodRPM = avgRPM;
+                
+                const prevPeriod = allData.slice(-periodLength * 2, -periodLength);
+                const prevTotalEarnings = prevPeriod.reduce((sum, day) => sum + day.earnings, 0);
+                const prevTotalSessions = prevPeriod.reduce((sum, day) => sum + day.sessions, 0);
+                const prevPeriodRPM = prevTotalSessions > 0 ? (prevTotalEarnings / prevTotalSessions) * 1000 : 0;
+                
+                trend = prevPeriodRPM > 0 ? ((currentPeriodRPM - prevPeriodRPM) / prevPeriodRPM) * 100 : 0;
             }
 
             return {
@@ -490,7 +508,7 @@
             
             const trendHTML = stats.trend != 0 ? 
                 `<div class="trend ${stats.trend > 0 ? 'up' : 'down'}">
-                    ${stats.trend > 0 ? '↑' : '↓'} ${Math.abs(stats.trend)}% vs previous week
+                    ${stats.trend > 0 ? '↑' : '↓'} ${Math.abs(stats.trend)}% vs previous period
                 </div>` : '';
 
             container.innerHTML = `
