@@ -375,17 +375,35 @@
         let selectedDays = 30;
 
         async function fetchSheetData() {
-            // Use CORS proxy to avoid CORS issues when opening HTML locally
-            const corsProxy = 'https://api.allorigins.win/raw?url=';
             // Add cache busting timestamp to force fresh data
             const timestamp = new Date().getTime();
             const urlWithTimestamp = PUBLISHED_CSV_URL + '&_=' + timestamp;
-            const url = corsProxy + encodeURIComponent(urlWithTimestamp);
             
             try {
-                const response = await fetch(url, {
-                    cache: 'no-store' // Don't use browser cache
+                // Try direct fetch first (works if file is served via web server)
+                let response = await fetch(urlWithTimestamp, {
+                    cache: 'no-store'
                 });
+                
+                // If direct fetch fails with CORS, try backup proxies
+                if (!response.ok) {
+                    const proxies = [
+                        'https://corsproxy.io/?',
+                        'https://api.codetabs.com/v1/proxy?quest=',
+                        'https://api.allorigins.win/raw?url='
+                    ];
+                    
+                    for (const proxy of proxies) {
+                        try {
+                            response = await fetch(proxy + encodeURIComponent(urlWithTimestamp), {
+                                cache: 'no-store'
+                            });
+                            if (response.ok) break;
+                        } catch (e) {
+                            continue;
+                        }
+                    }
+                }
                 
                 if (!response.ok) {
                     throw new Error('Failed to fetch sheet data.');
@@ -394,7 +412,7 @@
                 const csvText = await response.text();
                 return parseCSV(csvText);
             } catch (error) {
-                throw new Error('Failed to load data from Google Sheet. Please check your internet connection or try using a local server.');
+                throw new Error('Failed to load data from Google Sheet. All connection attempts failed. Try refreshing in a few seconds.');
             }
         }
 
